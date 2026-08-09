@@ -1,0 +1,6 @@
+import 'package:flutter/material.dart';
+import '../services/api.dart';
+import '../widgets/avatar.dart';
+import 'chat_screen.dart';
+class MessagesScreen extends StatefulWidget{const MessagesScreen({super.key});@override State<MessagesScreen>createState()=>_MessagesScreenState();}
+class _MessagesScreenState extends State<MessagesScreen>{List rows=[];bool loading=true;@override void initState(){super.initState();load();}Future<void>load()async{try{final j=await Api.request('/conversations');rows=List.from(j['conversations']??[]);}finally{if(mounted)setState(()=>loading=false);}}@override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('الرسائل')),body:loading?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:ListView.separated(itemCount:rows.length,separatorBuilder:(_,__)=>const Divider(height:1),itemBuilder:(_,i){final r=Map<String,dynamic>.from(rows[i]);final other={'id':int.parse(r['other_id'].toString()),'name':r['other_name'],'avatar':r['other_avatar']};return ListTile(leading:Avatar(url:r['other_avatar']),title:Text(r['other_name']??'مستخدم'),subtitle:const Text('اضغط لفتح المحادثة'),onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>ChatScreen(conversationId:int.parse(r['id'].toString()),other:other))).then((_)=>load()));})));}
