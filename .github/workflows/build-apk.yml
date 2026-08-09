@@ -1,0 +1,71 @@
+name: LIVO AGP 8.9.1 APK BUILD
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.2'
+          channel: stable
+          cache: true
+
+      - name: Verify project files
+        working-directory: app
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -f android/app/build.gradle
+          test -f android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.CAMERA' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.RECORD_AUDIO' android/app/src/main/AndroidManifest.xml
+          grep -q 'https://bbb.ezzy500.vip' lib/services/api.dart
+          grep -q 'version "8.9.1"' android/settings.gradle
+          grep -q 'gradle-8.11.1-all.zip' android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Get packages
+        working-directory: app
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: app
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build release APK
+        working-directory: app
+        run: flutter build apk --release
+
+      - name: Verify APK
+        working-directory: app
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LIVO-APK-CLEAN
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
